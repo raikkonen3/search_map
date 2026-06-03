@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Search 分層架構圖｜Yahoo Search PM 面試準備</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg-primary: #ffffff; --bg-secondary: #f7f6f2; --bg-tertiary: #f0efe9;
+    --text-primary: #1a1a18; --text-secondary: #5a5a56; --text-tertiary: #8a8a84;
+    --border-tertiary: rgba(0,0,0,0.12); --border-secondary: rgba(0,0,0,0.22); --border-primary: rgba(0,0,0,0.35);
+    --radius-md: 8px; --radius-lg: 12px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg-primary: #1e1e1c; --bg-secondary: #2a2a27; --bg-tertiary: #242422;
+      --text-primary: #e8e6de; --text-secondary: #a8a69e; --text-tertiary: #6e6c66;
+      --border-tertiary: rgba(255,255,255,0.10); --border-secondary: rgba(255,255,255,0.18); --border-primary: rgba(255,255,255,0.28);
+    }
+  }
+  body { font-family: var(--font); background: var(--bg-tertiary); color: var(--text-primary); padding: 24px 16px 48px; min-height: 100vh; }
+  .page-header { max-width: 900px; margin: 0 auto 20px; }
+  .page-header h1 { font-size: 18px; font-weight: 500; color: var(--text-primary); margin-bottom: 4px; }
+  .page-header p { font-size: 13px; color: var(--text-tertiary); }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  .hint-top { font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; padding: 8px 12px; background: var(--bg-secondary); border-radius: var(--radius-md); border: 0.5px solid var(--border-tertiary); }
+  .layer-label { font-size: 11px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 8px 2px; }
+  .layer { border: 0.5px solid var(--border-tertiary); border-radius: var(--radius-lg); padding: 14px 16px 16px; margin-bottom: 6px; }
+  .layer-ux { background: color-mix(in srgb, #E1F5EE 20%, var(--bg-primary)); }
+  .layer-query { background: color-mix(in srgb, #EEEDFE 20%, var(--bg-primary)); }
+  .layer-result { background: color-mix(in srgb, #FAEEDA 20%, var(--bg-primary)); }
+  .nodes { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
+  .node-card { border: 0.5px solid var(--border-secondary); border-radius: var(--radius-md); padding: 9px 12px; cursor: pointer; transition: background .15s, border-color .15s, transform .1s; min-width: 130px; max-width: 175px; flex: 1; background: var(--bg-primary); user-select: none; }
+  .node-card:hover { border-color: var(--border-primary); background: var(--bg-secondary); transform: translateY(-1px); }
+  .node-card.active { border-color: var(--border-primary); background: var(--bg-secondary); box-shadow: 0 0 0 2px rgba(83,74,183,0.15); }
+  .node-title { font-size: 13px; font-weight: 500; color: var(--text-primary); margin-bottom: 3px; line-height: 1.4; }
+  .node-sub { font-size: 11px; color: var(--text-secondary); line-height: 1.4; }
+  .arrow-row { display: flex; justify-content: center; align-items: center; gap: 8px; margin: 6px 0; color: var(--text-tertiary); font-size: 11px; }
+  .arrow-shaft { width: 1px; height: 20px; background: var(--border-secondary); position: relative; flex-shrink: 0; }
+  .arrow-shaft::after { content: ''; position: absolute; bottom: -5px; left: -3px; border-left: 3.5px solid transparent; border-right: 3.5px solid transparent; border-top: 5px solid var(--border-secondary); }
+  .detail-panel { margin-top: 14px; border: 0.5px solid var(--border-secondary); border-radius: var(--radius-lg); padding: 16px 18px 18px; background: var(--bg-primary); animation: slideIn .15s ease; }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+  .detail-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; gap: 12px; }
+  .detail-title { font-size: 15px; font-weight: 500; color: var(--text-primary); line-height: 1.4; }
+  .detail-layer-tag { font-size: 11px; color: var(--text-tertiary); font-weight: 400; display: block; margin-top: 2px; }
+  .close-btn { flex-shrink: 0; font-size: 12px; color: var(--text-tertiary); cursor: pointer; border: 0.5px solid var(--border-tertiary); border-radius: 5px; padding: 3px 8px; background: var(--bg-secondary); white-space: nowrap; transition: background .15s; }
+  .close-btn:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  @media (max-width: 680px) { .detail-grid { grid-template-columns: 1fr; } }
+  .detail-col h4 { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; margin: 0 0 6px; padding-bottom: 4px; border-bottom: 0.5px solid var(--border-tertiary); }
+  .detail-col.ux h4 { color: #0F6E56; } .detail-col.tech h4 { color: #3C3489; } .detail-col.diag h4 { color: #993C1D; }
+  .detail-col p { font-size: 12.5px; color: var(--text-secondary); line-height: 1.6; }
+  .diag-symptoms { margin-top: 10px; padding: 9px 11px; background: color-mix(in srgb, #FAECE7 20%, var(--bg-secondary)); border-radius: var(--radius-md); border: 0.5px solid color-mix(in srgb, #F0997B 30%, transparent); }
+  .diag-symptoms h5 { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: #993C1D; margin-bottom: 6px; }
+  .diag-symptoms ul { margin: 0; padding-left: 14px; font-size: 12px; color: var(--text-secondary); line-height: 1.7; }
+  .hint-bottom { text-align: center; font-size: 11px; color: var(--text-tertiary); margin-top: 12px; }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div class="page-header">
+  <h1>Search 分層架構圖</h1>
+  <p>Yahoo Search PM 面試準備｜Part 2 配套互動工具｜點擊任一節點查看 UX / Technical / 診斷症狀說明</p>
+</div>
+<div class="wrap">
+  <div class="hint-top">💡 點擊任一節點 → 展開 UX 視角、Technical 視角、診斷症狀三欄說明。再次點擊同一節點可收合。</div>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#1D9E75"></div>前端 UX 層</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#534AB7"></div>Query Processing 層（平行執行）</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#BA7517"></div>Result 層</div>
+  </div>
+  <div class="layer layer-ux">
+    <div class="layer-label">① 前端 UX 層（Frontend UX Layer）</div>
+    <div class="nodes">
+      <div class="node-card" onclick="show('entry',this)"><div class="node-title">搜尋入口<br><span style="font-weight:400;font-size:11px;color:var(--text-tertiary)">Search Entry</span></div><div class="node-sub">入口位置、觸發方式</div></div>
+      <div class="node-card" onclick="show('zerostate',this)"><div class="node-title">空白搜尋頁<br><span style="font-weight:400;font-size:11px;color:var(--text-tertiary)">Zero State</span></div><div class="node-sub">尚未輸入時的介面</div></div>
+      <div class="node-card" onclick="show('autocomplete',this)"><div class="node-title">自動補全<br><span style="font-weight:400;font-size:11px;color:var(--text-tertiary)">Autocomplete</span></div><div class="node-sub">三種介面狀態</div></div>
+      <div class="node-card" onclick="show('serp',this)"><div class="node-title">搜尋結果頁<br><span style="font-weight:400;font-size:11px;color:var(--text-tertiary)">SERP</span></div><div class="node-sub">結果版面配置</div></div>
+      <div class="node-card" onclick="show('nullpage',this)"><div class="node-title">零結果頁<br><span style="font-weight:400;font-size:11px;color:var(--text-tertiary)">No Result Page</span></div><div class="node-sub">找不到結果時的引導</div></div>
+    </div>
+  </div>
+  <div class="arrow-row"><div class="arrow-shaft"></div><span>用戶送出 Query</span></div>
+  <div class="layer layer-query">
+    <div class="layer-label">② 查詢處理層（Query Processing Layer）— 以下步驟平行執行</div>
+    <div class="nodes">
+      <div class="node-card" onclick="show('tokenization',this)"><div class="node-title">分詞<br><span style="font-weight:400;font-size:11px;color:var(--text-tertiary)">Tokenization</span></div><div class="node-sub">切字拆解 Query</div></div>
+      <div class="node-card" onclick="show('spellcorrect',this)"><div class="node-title">拼字糾錯<br><span style="font-weight:400;font-size:11px;color:var(--text-tertiary)">Spell Correction</span></div><div class="node-sub">錯字自動修正</div></div>
+      <div class="node-card" onclick="show('stopword',this)"><div class="node-title">停用詞處理<br><span style="font-weight:400;font-size:11px;color:var(--text-tertiary)">Stopword Removal</span></div><div class="node-sub">過濾無意義詞彙</div></div>
+      <div class="node-card" onclick="show('synonym',this)"><div class="node-title">同義詞擴展<br><span style="font-weight:400;font-size:11px;color:var(--text-tertiary)">Synonym Expansion</span></div><div class="node-sub">擴大召回範圍</div></div>
+      <div class="node-card" onclick="show('entity',this)"><div class="node-title">實體識別<br><span style="font-weight:400;font-size:11px;color:var(--text-tertiary)">Entity Recognition</span></div><div class="node-sub">品牌、品類、規格</div></div>
+      <div class="node-card" onclick="show('classification',this)"><div class="node-title">意圖分類<br><span style="font-weight:400;font-size:11px;color:var(--text-tertiary)">Query Classification</span></div><div class="node-sub">導航型 / 探索型 / 交易型</div></div>
+      <div class="node-card" onclick="show('rewriting',this)"><div class="node-title">查詢重寫<br><span style="font-weight:400;font-size:11px;color:var(--text-tertiary)">Query Rewriting</span></div><div class="node-sub">輸出最佳化 Query</div></div>
+    </div>
+  </div>
+  <div class="arrow-row"><div class="arrow-shaft"></div><span>輸出 Processed Query</span></div>
+  <div class="layer layer-result">
+    <div class="layer-label">③ 結果層（Result Layer）</div>
+    <div class="nodes">
+      <div class="node-card" onclick="show('retrieval',this)"><div class="node-title">召回<br><span style="font-weight:400;font-size:11px;color:var(--text-tertiary)">Retrieval</span></div><div class="node-sub">找出候選商品集合</div></div>
+      <div class="node-card" onclick="show('ranking',this)"><div class="node-title">排序<br><span style="font-weight:400;font-size:11px;color:var(--text-tertiary)">Ranking</span></div><div class="node-sub">排序信號與權重設計</div></div>
+      <div class="node-card" onclick="show('personalization',this)"><div class="node-title">個人化<br><span style="font-weight:400;font-size:11px;color:var(--text-tertiary)">Personalization</span></div><div class="node-sub">根據行為調整排序</div></div>
+      <div class="node-card" onclick="show('campaign',this)"><div class="node-title">活動注入<br><span style="font-weight:400;font-size:11px;color:var(--text-tertiary)">Campaign Injection</span></div><div class="node-sub">促銷商品插入結果</div></div>
+      <div class="node-card" onclick="show('diversity',this)"><div class="node-title">多樣性<br><span style="font-weight:400;font-size:11px;color:var(--text-tertiary)">Diversity</span></div><div class="node-sub">避免結果單一化</div></div>
+      <div class="node-card" onclick="show('nullresult',this)"><div class="node-title">零結果處理<br><span style="font-weight:400;font-size:11px;color:var(--text-tertiary)">Null Search Handling</span></div><div class="node-sub">三種處理策略</div></div>
+    </div>
+  </div>
+  <div class="detail-panel" id="detail" style="display:none"></div>
+  <p class="hint-bottom">點擊節點展開說明｜再次點擊同一節點可收合</p>
+</div>
+<script>
+const DATA = {
+  entry:{title:'搜尋入口（Search Entry）',layer:'前端 UX 層',ux:'搜尋框的位置（頁頂固定 vs 頁中突出）、樣式（icon-only vs 展開框）、觸發方式（點擊 vs 頁面載入即展開）直接影響用戶是否進入搜尋流程。Placeholder Text 的設計（是否顯示熱搜詞）也是可以 A/B test 的變數。',tech:'追蹤指標：搜尋使用率（Search Adoption Rate）= 有搜尋行為的 Session ÷ 總 Session。入口位置與樣式的 A/B test 是最容易快速影響此指標的槓桿。',diag:'Search Adoption Rate 低 → 用戶找不到搜尋入口，或不習慣用搜尋（Browse 習慣主導）。',diag2:['Search Adoption Rate 長期低於全站平均']},
+  zerostate:{title:'空白搜尋頁（Zero State）',layer:'前端 UX 層',ux:'用戶點擊搜尋框但還沒輸入任何字時的介面。三種內容策略：① 熱搜榜（全站即時熱門詞）② 個人化推薦（基於歷史行為）③ 分類導覽（Browse by Category）。PM 要定義：新用戶 vs 回訪用戶應看到不同內容的規則。',tech:'個人化推薦需要 User Behavior Signal；新用戶冷啟動時顯示熱搜詞；熱搜詞需要即時更新機制（通常 15 分鐘–1 小時 refresh lag）。這是 Search 與 Recommendation 系統的交叉地帶。',diag:'Zero State Bounce Rate 高（用戶打開搜尋後立刻關閉）→ 顯示的推薦詞與用戶需求不符；或頁面資訊過多造成選擇困難。',diag2:['Zero State Bounce Rate 高','個人化推薦點擊率低（新用戶冷啟動問題）']},
+  autocomplete:{title:'自動補全（Autocomplete）',layer:'前端 UX 層',ux:'三種介面狀態：① 有補全建議（正常）：顯示熱搜詞、個人搜尋史、趨勢詞、品牌詞，排序：個人紀錄 > 趨勢詞 > 全站熱搜；② 無補全結果（Edge Case）：顯示熱搜詞兜底，不顯示空白；③ Search History vs Saved Search 的邊界：前者系統自動記錄、暫時性；後者用戶主動收藏、永久性，需要不同的管理介面與資料邏輯。',tech:'Autocomplete 數據來源：歷史搜尋頻率統計、個人搜尋紀錄、實時趨勢信號。觸發閾值（輸入幾個字才顯示）與補全詞更新頻率（實時 vs 每日批次）是兩個關鍵系統決策。',diag:'Autocomplete Adoption Rate 低 → 補全建議與用戶輸入意圖不符；回訪用戶與新用戶看到相同補全詞 → 個人化未接入。',diag2:['Autocomplete Adoption Rate 低','補全詞無個人化差異','趨勢詞更新滯後']},
+  serp:{title:'搜尋結果頁（SERP）',layer:'前端 UX 層',ux:'版面配置關鍵決策：① 廣告位（Sponsored Listing）的數量與位置；② 篩選條件（Filter / Facet）位置：左側固定欄 vs 頁頂橫向；③ 排序切換（Sort）預設邏輯；④ Campaign Module 插入位置。每個決策都需要 A/B test 驗證，牽涉多方利益。',tech:'SERP 是廣告系統與搜尋系統的整合介面。需要同時追蹤廣告 CTR 與自然結果 CTR，確保廣告版位不以犧牲自然結果相關性為代價提升廣告收入。',diag:'整體 CTR 低但廣告 CTR 正常 → 自然結果排序問題；整體 CTR 低且廣告 CTR 也低 → 結果相關性問題。',diag2:['Search CTR 下降（早期預警信號）','搜尋後立刻離開（Query Abandonment Rate 高）']},
+  nullpage:{title:'零結果頁（No Result Page）',layer:'前端 UX 層',ux:'找不到結果時的四種引導策略（依優先順序）：① 糾錯建議；② 放寬條件提示（「沒找到完全符合，以下是相關結果」）；③ 相關品類導覽；④ 熱銷商品兜底。設計原則：永遠不要讓用戶面對空白頁。',tech:'四種策略背後需要不同系統支撐：糾錯引擎、模糊匹配、品類分類樹、熱銷商品推薦。PM 需要定義觸發邏輯：什麼條件下用哪種策略，以及各策略的優先順序。',diag:'Null Rate 高且 No Result Page 跳出率高 → 兜底策略無效；Null Rate 高但跳出率低 → 兜底有效，但根本問題仍需解決。',diag2:['Null Search Rate 高','No Result Page 跳出率（Bounce Rate）高']},
+  tokenization:{title:'分詞（Tokenization）',layer:'查詢處理層',ux:'用戶感知不到，但結果直接影響精準度。「無線藍牙耳機」切成「無線／藍牙／耳機」（正確）vs「無線藍牙／耳機」，召回的商品集合完全不同。',tech:'中文無空格，分詞是電商搜尋最基礎也最難的問題。需要自建領域詞典：品牌名不切開、型號作整體詞、複合詞（咖啡機不切成咖啡＋機）。切字時機：糾錯前還是糾錯後，影響後續所有處理。',diag:'搜尋精準品類詞卻召回不相關商品 → 分詞切錯；搜尋型號找不到對應商品 → 型號未被識別為整體詞彙。',diag2:['搜尋精準詞召回不相關商品','搜尋型號找不到商品（詞典覆蓋不足）']},
+  spellcorrect:{title:'拼字糾錯（Spell Correction）',layer:'查詢處理層',ux:'偵測並修正拼字錯誤，降低因錯字導致的零結果。呈現方式：靜默自動糾正 vs 明確提示「您是否要搜尋：adidas？」，前者體驗流暢但有過度干預風險，後者給用戶控制感但增加點擊成本。',tech:'三類糾錯場景：① 英文拼錯（adidsa→adidas，使用 Edit Distance 算法）② 中文注音輸入錯誤 ③ 全半形混用。需要設定糾錯信心分數閾值（Confidence Threshold），高於閾值才自動糾正。',diag:'Null Rate 高 + 拼錯詞佔比高 → 糾錯未啟動或覆蓋率不足；Reformulation Rate 高 → 糾錯建議不被接受。',diag2:['Null Rate 高（糾錯覆蓋率不足）','Reformulation Rate 高（用戶不信任糾錯結果）']},
+  stopword:{title:'停用詞處理（Stopword Removal）',layer:'查詢處理層',ux:'過濾掉對搜尋沒有意義的詞彙（「超好用的咖啡機推薦」→「咖啡機」），讓核心意圖更清晰。',tech:'電商語境的停用詞清單與一般 NLP 不同，需要針對購物行為自建。過濾過頭的風險：「不會漏水的水壺」→「水壺」，重要屬性描述遺失。需要持續維護與審查。',diag:'搜尋含屬性描述的詞卻得到不相關結果 → 停用詞過度過濾，屬性信號遺失。',diag2:['含屬性描述（顏色、規格）的搜尋結果精準度低']},
+  synonym:{title:'同義詞擴展（Synonym Expansion）',layer:'查詢處理層',ux:'讓用戶搜「筆電」也能找到標題寫「筆記型電腦」「laptop」「NB」的商品。台灣在地化同義詞尤其重要：「機車」=「摩托車」；「冰箱」=「電冰箱」。',tech:'擴展方向：① 單向（筆電→laptop，但不反向）② 雙向（冰箱↔電冰箱）。擴展過廣的風險：搜「蘋果」→ 同義詞擴展到「Apple」→ 再到「iPhone」，召回結果與原始意圖越來越遠。',diag:'相同商品不同說法搜尋結果差異巨大 → 同義詞覆蓋不足；召回過多不相關商品 → 同義詞擴展過廣。',diag2:['相同商品不同說法結果差異大','召回不相關商品比例偏高']},
+  entity:{title:'實體識別（Entity Recognition）',layer:'查詢處理層',ux:'從 Query 中識別出結構化資訊：品牌（Nike）、品類（跑鞋）、規格（第二代）、風格（街頭）、目標對象（女款）。識別後才能做精準的 Ranking 和 Filter 自動帶入。',tech:'需要自建知識圖譜（Knowledge Graph）：品牌清單、型號資料庫、品類樹。台灣在地品牌識別挑戰：英中混用（無印良品 vs MUJI）、型號格式多樣。新品牌持續出現，需要即時更新機制。',diag:'搜尋「Nike 女款跑鞋」結果混入男款或其他品牌 → 識別失敗；搜尋「airpods pro 第二代」出現第一代商品 → 規格識別失敗。',diag2:['搜尋含品牌＋規格的精準度低','篩選條件（Filter）無法自動帶入']},
+  classification:{title:'意圖分類（Query Classification）',layer:'查詢處理層',ux:'三種意圖：① 導航型（Navigational）：找特定品牌館；② 交易型（Transactional）：有明確購買意圖；③ 探索型（Exploratory）：找靈感，如「母親節禮物推薦」。不同意圖對應不同的 SERP 設計。',tech:'導航型→導向品牌館；交易型→精準商品列表＋篩選；探索型→推薦集合＋Campaign Module。意圖識別準確率需要持續以用戶行為數據驗證。',diag:'搜尋「母親節禮物」出現單一商品列表而非推薦集合 → 探索型 Query 被誤判為交易型；搜尋品牌名找不到官方旗艦 → 導航型識別失敗。',diag2:['模糊探索詞呈現方式不符期待','品牌詞搜尋找不到官方旗艦店']},
+  rewriting:{title:'查詢重寫（Query Rewriting）',layer:'查詢處理層',ux:'Query Processing 層的最終輸出，用戶不感知。綜合所有前置處理結果，輸出一個比原始 Query 更適合用來檢索的版本交給 Result 層。',tech:'範例：「adidsa 第二代跑鞋好穿嗎」→ 糾錯（adidas）→ 停用詞移除（好穿嗎）→ 實體識別（品牌：adidas；品類：跑鞋）→ 輸出：「adidas 跑鞋」。需要平衡意圖精準度與召回率。',diag:'精準型號搜尋出現大量不相關商品 → Query Rewriting 過度放大；含錯字的搜尋得到零結果 → Rewriting 未覆蓋糾錯場景。',diag2:['精準搜尋召回不相關商品（過度重寫）','含錯字的搜尋沒有糾錯結果']},
+  retrieval:{title:'召回（Retrieval）',layer:'結果層',ux:'用戶感知不到，但召回品質決定 Ranking 有沒有足夠好的素材。召回失敗 = 再好的排序也沒用。',tech:'三種策略：① 精確匹配（Exact Match）：精準但 Null Rate 高；② 模糊匹配（Fuzzy Match）：召回量大但可能不精準；③ 語意匹配（Semantic Match）：理解意圖，技術門檻最高。商品索引（Search Index）的建立方式直接決定召回速度與品質。',diag:'有商品但搜尋找不到 → 召回漏失（Index 未收錄或召回策略過嚴）；搜尋結果數量異常少 → 召回過窄。',diag2:['有商品但搜不到（召回漏失）','結果數量異常少']},
+  ranking:{title:'排序（Ranking）',layer:'結果層',ux:'搜尋結果的順序直接反映 Ranking 決策。排序第一的商品 CTR 通常是第十名的 5–10 倍，因此 Ranking 邏輯是 Search PM 最重要的設計決策。',tech:'核心排序信號（Ranking Signals）：相關性（Relevance）、熱門度（Popularity）、轉換率（CVR）、毛利（Margin）、時效性（Recency）。每個信號的權重設計是 PM 核心決策，需要持續 A/B test 優化。',diag:'CTR 高但 CVR 低 → 前排商品吸引點擊但不符購買需求；用戶不斷翻頁尋找 → 前排排序未滿足期待。',diag2:['CTR 高 CVR 低（排序偏離購買意圖）','高排名商品 GMV 貢獻低']},
+  personalization:{title:'個人化（Personalization）',layer:'結果層',ux:'同一個搜尋詞，不同用戶看到不同順序的結果。常買運動用品的用戶搜「耳機」會看到運動耳機排前；常買 3C 的用戶看到降噪耳機排前。',tech:'所需數據：瀏覽史、購買史、搜尋史、收藏清單、停留時間。冷啟動問題（Cold Start）：新用戶無行為數據，解法：① 全站熱銷排序兜底；② 引導選擇興趣標籤。OPENPOINT 整合後個人化數據來源大幅增加。',diag:'回訪用戶 CVR 不高於新用戶 → 個人化未生效；用戶反映「結果越搜越窄」→ 個人化過度，Filter Bubble 問題。',diag2:['回訪用戶 CVR 未顯著高於新用戶','用戶反映結果同質化（Filter Bubble）']},
+  campaign:{title:'活動注入（Campaign Injection）',layer:'結果層',ux:'在特定時間（雙11、母親節、週年慶）將促銷商品或活動模組插入搜尋結果，讓有明確購買意圖的搜尋用戶自然觸達促銷。比單純的 Banner 廣告更精準。',tech:'PM 需要定義三件事：① 哪些 Query 觸發哪些 Campaign（Query → Campaign Mapping）② 插入位置 ③ 退場機制（活動結束後自動下架，避免過期促銷殘留）。',diag:'大檔期搜尋相關品類看不到促銷商品 → Campaign Injection 未設定或 Query Mapping 覆蓋不足；活動結束後仍看到過期促銷 → 退場機制未設計。',diag2:['大檔期 Search-to-Campaign CVR 低','過期活動殘留在搜尋結果中']},
+  diversity:{title:'多樣性（Diversity）',layer:'結果層',ux:'避免搜尋結果前 10 個都是同一品牌、同一賣家或同一商品的不同顏色。多樣性讓用戶有比較和探索的空間。',tech:'常見做法：設定每個品牌 / 賣家在前 10 個結果中的最大佔位數（Max Slot per Brand）。Diversity 與 Ranking 天生 trade-off，需要根據 Query 類型動態調整：品牌詞 → 多樣性要求低；品類詞 → 多樣性要求高。',diag:'前排結果全是同一品牌或賣家的不同 SKU → Diversity 邏輯未設定；用戶反映「都是一樣的東西」→ 相關性信號過強導致結果收斂。',diag2:['前排結果品牌多樣性低','Search Session Depth 低（探索性不足）']},
+  nullresult:{title:'零結果處理（Null Search Handling）',layer:'結果層',ux:'三種策略及觸發邏輯：① 糾錯後重新搜尋（糾錯信心分數高）② 放寬條件模糊匹配（精確匹配零結果但模糊匹配有結果）③ 兜底推薦（前兩種均無解）。永遠確保用戶有東西可以互動。',tech:'Null Rate 的定義需要 PM 確認：Null = 0 個結果？還是結果數 < 某個閾值？定義不同導致指標差異很大。三種策略需要不同系統支撐，PM 需要定義清晰的決策樹。',diag:'Null Rate 高 + No Result Page 跳出率高 → 兜底策略無效；Null Rate 低但 CVR 也低 → 模糊匹配過度放寬，以降低 Null Rate 為代價犧牲了精準度（最典型的 trade-off 案例）。',diag2:['Null Rate 高（策略覆蓋不足）','Null Rate 低但 CVR 也低（模糊匹配犧牲精準度）']}
+};
+let current=null,activeCard=null;
+function show(key,el){
+  const panel=document.getElementById('detail');
+  if(current===key){panel.style.display='none';current=null;if(activeCard)activeCard.classList.remove('active');activeCard=null;return;}
+  current=key;if(activeCard)activeCard.classList.remove('active');activeCard=el;el.classList.add('active');
+  const d=DATA[key];
+  const diag2html=d.diag2.length?`<div class="diag-symptoms"><h5>可能的 Metrics 異常</h5><ul>${d.diag2.map(s=>`<li>${s}</li>`).join('')}</ul></div>`:'';
+  panel.innerHTML=`<div class="detail-header"><div><div class="detail-title">${d.title}</div><span class="detail-layer-tag">${d.layer}</span></div><div class="close-btn" onclick="closePanel()">✕ 收合</div></div><div class="detail-grid"><div class="detail-col ux"><h4>UX 視角</h4><p>${d.ux}</p></div><div class="detail-col tech"><h4>Technical 視角</h4><p>${d.tech}</p></div><div class="detail-col diag"><h4>診斷症狀</h4><p>${d.diag}</p>${diag2html}</div></div>`;
+  panel.style.display='block';panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function closePanel(){document.getElementById('detail').style.display='none';current=null;if(activeCard)activeCard.classList.remove('active');activeCard=null;}
+</script>
+</body>
+</html>
